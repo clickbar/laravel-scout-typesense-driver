@@ -6,6 +6,7 @@ use Typesense\LaravelTypesense\Typesense;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Str;
@@ -114,6 +115,27 @@ class TypesenseEngine extends Engine
     public function search(Builder $builder): mixed
     {
         return $this->performSearch($builder, array_filter($this->buildSearchParams($builder, 1, $builder->limit)));
+    }
+
+    public function searchCustom($model, string $query, array $options = []): mixed
+    {
+        $documents = $this->typesense->getCollectionIndex($model)
+                                     ->getDocuments();
+        
+        $buildOptions = $this->buildParams($model, $query, $options);
+
+        return $documents->search($buildOptions);
+    }
+
+    private function buildParams($model, string $searchValue, array $options): array {
+        return array_filter(
+            [
+                ...$options,
+                ...[
+                    'q' => $searchValue,
+                    'query_by' => implode(',', Arr::get($options, 'query_by', $model->typesenseQueryBy())),
+                ]
+            ]);
     }
 
     /**
@@ -227,7 +249,6 @@ class TypesenseEngine extends Engine
         if ($builder->callback) {
             return call_user_func($builder->callback, $documents, $builder->query, $options);
         }
-
         return $documents->search($options);
     }
 
@@ -489,5 +510,10 @@ class TypesenseEngine extends Engine
     public function deleteIndex($name): array
     {
         return $this->typesense->deleteCollection($name);
+    }
+
+    public function updateSchema($model, array $schema)
+    {
+        $this->typesense->updateModelCollectionSchema($model, $schema);
     }
 }

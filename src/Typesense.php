@@ -6,7 +6,6 @@ use Typesense\Exceptions\TypesenseClientError;
 use Typesense\LaravelTypesense\Classes\TypesenseDocumentIndexResponse;
 use Typesense\Client;
 use Typesense\Collection;
-use Typesense\Document;
 use Typesense\Exceptions\ObjectNotFound;
 
 /**
@@ -63,6 +62,17 @@ class Typesense
                          ->create($model->getCollectionSchema());
 
             return $this->client->getCollections()->{$model->searchableAs()};
+        }
+    }
+
+    public function updateModelCollectionSchema($model, array $schema)
+    {
+        $index = $this->client->collections[$model->searchableAs()];
+
+        if ($index === null) {
+            throw new ObjectNotFound('Collection not found');
+        } else {
+            $index->update($schema);
         }
     }
 
